@@ -2,6 +2,8 @@ import { useSelector } from 'react-redux';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { aqiToTone } from '../../utils/colorScale';
 
+const EMPTY_POINTS = [];
+
 function getBarColor(aqi) {
   if (aqi <= 50) return '#22c55e';
   if (aqi <= 100) return '#f59e0b';
@@ -26,7 +28,9 @@ function buildSeries(points = []) {
 }
 
 export default function AirQualityChart() {
-  const points = useSelector((state) => state.data.byLayer.airQuality || []);
+  const points = useSelector((state) => (
+    Array.isArray(state.data.byLayer.airQuality) ? state.data.byLayer.airQuality : EMPTY_POINTS
+  ));
   const data = buildSeries(points);
 
   return (

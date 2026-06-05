@@ -5,12 +5,15 @@ import { toLngLat } from '../../utils/geoHelpers';
 
 export function LayerFactory(activeLayers, data) {
   const layers = [];
+  const airQuality = Array.isArray(data.airQuality) ? data.airQuality : [];
+  const weather = Array.isArray(data.weather) ? data.weather : [];
+  const transit = Array.isArray(data.transit) ? data.transit : [];
 
-  if (activeLayers.airQuality && data.airQuality) {
+  if (activeLayers.airQuality && airQuality.length) {
     layers.push(
       new HeatmapLayer({
         id: 'air-quality-heat',
-        data: data.airQuality,
+        data: airQuality,
         getPosition: toLngLat,
         getWeight: (point) => point.aqi,
         radiusPixels: 55,
@@ -20,13 +23,13 @@ export function LayerFactory(activeLayers, data) {
     );
   }
 
-  if (activeLayers.weather && data.weather) {
+  if (activeLayers.weather && weather.length) {
     layers.push(
       new ScatterplotLayer({
         id: 'weather-stations',
-        data: data.weather,
+        data: weather,
         getPosition: toLngLat,
-        getColor: (point) => tempToColor(point.temp),
+        getFillColor: (point) => tempToColor(point.temp),
         getRadius: 850,
         stroked: true,
         lineWidthMinPixels: 1,
@@ -36,11 +39,11 @@ export function LayerFactory(activeLayers, data) {
     );
   }
 
-  if (activeLayers.transit && data.transit) {
+  if (activeLayers.transit && transit.length) {
     layers.push(
       new HexagonLayer({
         id: 'transit-hex',
-        data: data.transit,
+        data: transit,
         getPosition: toLngLat,
         radius: 220,
         elevationScale: 4,

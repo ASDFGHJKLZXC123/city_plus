@@ -22,6 +22,6 @@ describe('MapView', () => {
       </Provider>,
     );
 
-    expect(screen.getByText(/VITE_MAPBOX_TOKEN/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mapbox is not configured/i)).toBeInTheDocument();
   });
 });

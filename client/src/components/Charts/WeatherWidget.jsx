@@ -1,6 +1,8 @@
 import { useSelector } from 'react-redux';
 import { aqiToTone } from '../../utils/colorScale';
 
+const EMPTY_POINTS = [];
+
 function formatWind(station) {
   if (station?.windSpeed == null) {
     return 'N/A';
@@ -27,8 +29,12 @@ function Metric({ label, value }) {
 }
 
 export default function WeatherWidget() {
-  const weather = useSelector((state) => state.data.byLayer.weather || []);
-  const airQuality = useSelector((state) => state.data.byLayer.airQuality || []);
+  const weather = useSelector((state) => (
+    Array.isArray(state.data.byLayer.weather) ? state.data.byLayer.weather : EMPTY_POINTS
+  ));
+  const airQuality = useSelector((state) => (
+    Array.isArray(state.data.byLayer.airQuality) ? state.data.byLayer.airQuality : EMPTY_POINTS
+  ));
   const firstStation = weather[0];
   const firstAqi = airQuality[0]?.aqi ?? 0;
 

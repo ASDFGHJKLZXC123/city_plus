@@ -22,6 +22,65 @@ function Tooltip({ item }) {
   );
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function hasUsableMapboxToken(token) {
+  return typeof token === 'string' && token.startsWith('pk.');
+}
+
+function FallbackMap({ data, location }) {
+  const points = [
+    ...data.airQuality.map((point) => ({
+      ...point,
+      type: 'Air quality',
+      color: '#f97316',
+      label: point.aqi == null ? point.name : `${point.name} · AQI ${Math.round(point.aqi)}`,
+    })),
+    ...data.weather.map((point) => ({
+      ...point,
+      type: 'Weather',
+      color: '#38bdf8',
+      label: point.temp == null ? point.name : `${point.name} · ${Math.round(point.temp)}°C`,
+    })),
+    ...data.transit.map((point) => ({
+      ...point,
+      type: 'Transit',
+      color: '#10b981',
+      label: point.name,
+    })),
+  ].filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+
+  const center = centerForPoints(points) || centerForLocation(location);
+
+  return (
+    <div className="map-fallback" role="img" aria-label="CityPulse demo map">
+      <div className="map-fallback__grid" />
+      <div className="map-fallback__copy">
+        <span>Demo map</span>
+        <strong>{location.label}</strong>
+        <p>Mapbox is not configured locally, so CityPulse is showing fixture-backed city signals.</p>
+      </div>
+      {points.map((point, index) => {
+        const left = Math.min(92, Math.max(8, 50 + (point.lon - center.longitude) * 1700));
+        const top = Math.min(88, Math.max(14, 50 - (point.lat - center.latitude) * 1700));
+
+        return (
+          <span
+            className="map-fallback__point"
+            key={`${point.type}-${point.name}-${index}`}
+            title={point.label}
+            style={{ left: `${left}%`, top: `${top}%`, '--point-color': point.color }}
+          >
+            <span>{point.type[0]}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function MapView() {
   const location = useSelector((state) => state.filters.location);
   const activeLayers = useSelector((state) => state.layers.activeLayers);
@@ -32,10 +91,15 @@ export default function MapView() {
   });
   const [tooltip, setTooltip] = useState(null);
 
-  const layers = useMemo(() => LayerFactory(activeLayers, data), [activeLayers, data]);
+  const layerData = useMemo(() => ({
+    airQuality: asArray(data.airQuality),
+    weather: asArray(data.weather),
+    transit: asArray(data.transit),
+  }), [data]);
+  const layers = useMemo(() => LayerFactory(activeLayers, layerData), [activeLayers, layerData]);
   const mapPoints = useMemo(
-    () => [...(data.weather || []), ...(data.airQuality || []), ...(data.transit || [])],
-    [data],
+    () => [...layerData.weather, ...layerData.airQuality, ...layerData.transit],
+    [layerData],
   );
   const token = process.env.VITE_MAPBOX_TOKEN;
 
@@ -52,8 +116,8 @@ export default function MapView() {
     }));
   }, [location, mapPoints]);
 
-  if (!token) {
-    return <div className="map-fallback">Add `VITE_MAPBOX_TOKEN` to render the live basemap.</div>;
+  if (!hasUsableMapboxToken(token)) {
+    return <FallbackMap data={layerData} location={location} />;
   }
 
   return (

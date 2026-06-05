@@ -10,6 +10,10 @@ const ENDPOINTS = {
   transit: 'transit',
 };
 
+function normalizeLayerData(data) {
+  return Array.isArray(data) ? data : [];
+}
+
 export function useMapData() {
   const dispatch = useDispatch();
   const location = useSelector((state) => state.filters.location);
@@ -28,7 +32,11 @@ export function useMapData() {
         const requests = enabled.map(([key]) =>
           api.get(`/${ENDPOINTS[key]}`, { params: { city: debouncedQuery } }).then((response) => ({
             key,
-            data: response.data,
+            data: normalizeLayerData(response.data),
+          })).catch((error) => ({
+            key,
+            data: [],
+            error: error.response?.data?.message || error.message,
           })),
         );
 
@@ -38,6 +46,8 @@ export function useMapData() {
         }
 
         responses.forEach((payload) => dispatch(setData(payload)));
+        const errors = responses.map((payload) => payload.error).filter(Boolean);
+        dispatch(setError(errors.length ? errors.join(' · ') : null));
       } catch (error) {
         if (!cancelled) {
           dispatch(setError(error.message));
