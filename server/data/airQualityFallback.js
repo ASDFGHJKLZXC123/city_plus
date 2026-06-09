@@ -22,7 +22,8 @@ const AIR_QUALITY_FIXTURES = {
 };
 
 function getAirQualityFallback(city = 'San Francisco') {
-  return AIR_QUALITY_FIXTURES[city] || AIR_QUALITY_FIXTURES['San Francisco'];
+  const normalizedCity = city.split(',')[0].trim();
+  return AIR_QUALITY_FIXTURES[normalizedCity] || AIR_QUALITY_FIXTURES['San Francisco'];
 }
 
 module.exports = { getAirQualityFallback };
