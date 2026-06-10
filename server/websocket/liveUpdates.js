@@ -1,44 +1,42 @@
 const WebSocket = require('ws');
 const axios = require('axios');
 const { getAirQualityFallback } = require('../data/airQualityFallback');
-
-function mapOpenAqResults(results = []) {
-  return results
-    .map((location) => ({
-      lat: location.coordinates?.latitude,
-      lon: location.coordinates?.longitude,
-      aqi: location.parameters?.[0]?.lastValue ?? 0,
-      name: location.name,
-    }))
-    .filter((point) => point.lat && point.lon);
-}
+const { mapOpenAqLocations } = require('../data/openaq');
 
 function startWebSocketServer(server) {
   const wss = new WebSocket.Server({ server });
 
   wss.on('connection', (socket) => {
     let currentCity = 'San Francisco,CA,US';
+    // Default to San Francisco until the client sends a SET_CITY message.
+    let currentLat = 37.7749;
+    let currentLon = -122.4194;
     let timer = null;
 
     const sendLiveUpdate = async () => {
       try {
-        const response = await axios.get('https://api.openaq.org/v2/locations', {
-          params: { city: currentCity, limit: 10, has_geo: true },
+        const response = await axios.get('https://api.openaq.org/v3/locations', {
+          params: {
+            coordinates: `${currentLat},${currentLon}`,
+            radius: 50000,
+            limit: 10,
+          },
           headers: process.env.OPENAQ_KEY ? { 'X-API-Key': process.env.OPENAQ_KEY } : {},
         });
 
         socket.send(
           JSON.stringify({
             type: 'AIR_QUALITY_UPDATE',
-            payload: mapOpenAqResults(response.data.results),
+            payload: mapOpenAqLocations(response.data.results),
           }),
         );
       } catch (error) {
-        if (error.response?.status === 410) {
+        // Any API failure → push city-centered fixture data so the client keeps working.
+        if (error.response || error.code === 'ECONNREFUSED') {
           socket.send(
             JSON.stringify({
               type: 'AIR_QUALITY_UPDATE',
-              payload: getAirQualityFallback(currentCity),
+              payload: getAirQualityFallback(currentCity, currentLat, currentLon),
             }),
           );
           return;
@@ -61,6 +59,8 @@ function startWebSocketServer(server) {
         const message = JSON.parse(raw);
         if (message.type === 'SET_CITY' && typeof message.city === 'string') {
           currentCity = message.city;
+          if (typeof message.lat === 'number') currentLat = message.lat;
+          if (typeof message.lon === 'number') currentLon = message.lon;
           restartTimer();
         }
       } catch {

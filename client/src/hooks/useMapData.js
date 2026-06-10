@@ -30,7 +30,9 @@ export function useMapData() {
       try {
         const enabled = Object.entries(activeLayers).filter(([, enabledFlag]) => enabledFlag);
         const requests = enabled.map(([key]) =>
-          api.get(`/${ENDPOINTS[key]}`, { params: { city: debouncedQuery } }).then((response) => ({
+          api.get(`/${ENDPOINTS[key]}`, {
+            params: { city: debouncedQuery, lat: location.latitude, lon: location.longitude },
+          }).then((response) => ({
             key,
             data: normalizeLayerData(response.data),
           })).catch((error) => ({

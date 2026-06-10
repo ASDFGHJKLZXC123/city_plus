@@ -4,16 +4,25 @@ import { setData } from '../store/dataSlice';
 
 export function useWebSocket() {
   const dispatch = useDispatch();
-  const selectedCity = useSelector((state) => state.filters.location?.query ?? 'San Francisco,CA,US');
+  // Read the full location object so we have lat/lon as well as the query string.
+  const location = useSelector((state) => state.filters.location);
   const socketRef = useRef(null);
 
-  // Send SET_CITY whenever the selected city changes (socket already open)
+  const buildSetCityMessage = (loc) =>
+    JSON.stringify({
+      type: 'SET_CITY',
+      city: loc?.query ?? 'San Francisco,CA,US',
+      lat: loc?.latitude ?? 37.7749,
+      lon: loc?.longitude ?? -122.4194,
+    });
+
+  // Send SET_CITY whenever the selected city changes (socket already open).
   useEffect(() => {
     const socket = socketRef.current;
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: 'SET_CITY', city: selectedCity }));
+      socket.send(buildSetCityMessage(location));
     }
-  }, [selectedCity]);
+  }, [location]);
 
   useEffect(() => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
@@ -23,7 +32,7 @@ export function useWebSocket() {
     socketRef.current = socket;
 
     socket.onopen = () => {
-      socket.send(JSON.stringify({ type: 'SET_CITY', city: selectedCity }));
+      socket.send(buildSetCityMessage(location));
     };
 
     socket.onmessage = (event) => {

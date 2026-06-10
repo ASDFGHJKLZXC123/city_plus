@@ -1,3 +1,5 @@
+const { generateAirQualityStations } = require('./synthetic');
+
 const AIR_QUALITY_FIXTURES = {
   'San Francisco': [
     { lat: 37.7749, lon: -122.4194, aqi: 42, name: 'Downtown' },
@@ -21,9 +23,23 @@ const AIR_QUALITY_FIXTURES = {
   ],
 };
 
-function getAirQualityFallback(city = 'San Francisco') {
-  const normalizedCity = city.split(',')[0].trim();
-  return AIR_QUALITY_FIXTURES[normalizedCity] || AIR_QUALITY_FIXTURES['San Francisco'];
+// city may arrive bare ('Austin') or comma-formatted ('Austin,TX,US'); strip
+// the suffix before matching curated fixtures. Cities without a curated table
+// are synthesised from their coordinates so the layer is centered on the
+// selected city instead of always defaulting to San Francisco.
+function getAirQualityFallback(city = 'San Francisco', lat, lon) {
+  const normalizedCity = String(city).split(',')[0].trim();
+  if (AIR_QUALITY_FIXTURES[normalizedCity]) {
+    return AIR_QUALITY_FIXTURES[normalizedCity];
+  }
+
+  const nLat = Number(lat);
+  const nLon = Number(lon);
+  if (Number.isFinite(nLat) && Number.isFinite(nLon)) {
+    return generateAirQualityStations(nLat, nLon, normalizedCity || 'Selected City');
+  }
+
+  return AIR_QUALITY_FIXTURES['San Francisco'];
 }
 
-module.exports = { getAirQualityFallback };
+module.exports = { getAirQualityFallback, AIR_QUALITY_FIXTURES };

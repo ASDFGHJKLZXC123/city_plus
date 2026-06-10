@@ -10,8 +10,9 @@ CityPulse is a React and Express geospatial dashboard for exploring live urban s
 - Automatic map recentering when a new location is selected
 - Sidebar weather summary and air quality trend chart
 - Express API proxy and WebSocket updates
-- Fallback air-quality fixtures when the legacy OpenAQ v2 endpoint returns `410 Gone`
-- Jest coverage for core client UI and server middleware
+- Live air quality via OpenAQ v3 with EPA PM2.5→AQI conversion
+- City-centered fallback fixtures for every layer when API keys are absent or upstreams fail
+- Test coverage for client UI plus server routes, fallbacks, and AQI mapping
 
 ## Tech Stack
 
@@ -37,10 +38,10 @@ CityPulse is a React and Express geospatial dashboard for exploring live urban s
 
 ## Project Structure
 
-- [client](/Users/f8fq/WebstormProjects/city+/client): React app, Redux store, map components, sidebar UI, tests
-- [server](/Users/f8fq/WebstormProjects/city+/server): Express API, cache middleware, websocket updates, tests
-- [docker-compose.yml](/Users/f8fq/WebstormProjects/city+/docker-compose.yml): Local container orchestration
-- [.github/workflows/ci.yml](/Users/f8fq/WebstormProjects/city+/.github/workflows/ci.yml): CI pipeline
+- [client](client): React app, Redux store, map components, sidebar UI, tests
+- [server](server): Express API, cache middleware, websocket updates, tests
+- [docker-compose.yml](docker-compose.yml): Local container orchestration
+- [.github/workflows/ci.yml](.github/workflows/ci.yml): CI pipeline
 
 ## Local Setup
 
@@ -59,8 +60,8 @@ npm install
 
 3. Fill in the environment files:
 
-- [client/.env.local](/Users/f8fq/WebstormProjects/city+/client/.env.local)
-- [server/.env](/Users/f8fq/WebstormProjects/city+/server/.env)
+- [client/.env.local](client/.env.local)
+- [server/.env](server/.env)
 
 Example values:
 
@@ -115,9 +116,13 @@ Direct workspace commands:
 
 ## Data Notes
 
-- Weather data is requested through the backend proxy.
-- Transit data currently uses local fixture data.
-- Air-quality requests currently fall back to fixture data when OpenAQ `v2` returns `410 Gone`. This keeps the UI usable, but a future migration to a current air-quality source is still needed.
+The client sends the selected city's coordinates to every endpoint, so all three layers render data centered on the chosen city.
+
+- **Weather**: requested live from OpenWeather when `OPENWEATHER_KEY` is set; otherwise served from city-centered fallback fixtures (curated for San Francisco and Austin, deterministically synthesised for every other city).
+- **Air quality**: requested live from OpenAQ v3 (`/v3/locations`, coordinate + radius search). Measured PM2.5 values are converted to AQI via the US EPA breakpoints; stations the API returns without a current reading are flagged `estimated` and given a deterministic, coordinate-derived AQI so the heatmap still renders. With no reachable API the route serves curated/synthesised fallback fixtures.
+- **Transit**: served entirely from city-centered fixtures (no live upstream), curated for San Francisco and Austin and synthesised elsewhere.
+
+Synthetic fixtures are deterministic — the same coordinates always produce the same data — so responses are cache-friendly and stable across requests. Setting `OPENAQ_KEY` enables live air-quality lookups; wiring fully-measured per-sensor AQI would add OpenAQ `/v3/.../latest` follow-up calls (see `server/data/openaq.js`).
 
 ## Testing
 
@@ -130,13 +135,13 @@ npm run test --workspace server
 
 Current verified checks:
 
-- client test suite passes
-- server test suite passes
-- client production build passes
+- server test suite passes (33 tests)
+- client test suite passes (8 tests)
+- client production build passes (run on macOS; esbuild ships a platform-specific binary)
 
 ## Docker
 
-Docker files are included for both services plus [docker-compose.yml](/Users/f8fq/WebstormProjects/city+/docker-compose.yml).
+Docker files are included for both services plus [docker-compose.yml](docker-compose.yml).
 
 ```bash
 docker compose up --build
